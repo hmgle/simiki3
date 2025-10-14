@@ -1,0 +1,58 @@
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.6;
+  background: #f7f7f9;
+  color: #222;
+}
+
+.site-header,
+.site-footer {
+  background: #1f2933;
+  color: #f5f7fa;
+  padding: 1.5rem 2rem;
+  text-align: center;
+}
+
+.site-header a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.site-tagline {
+  margin: 0.5rem 0 0;
+  font-weight: 300;
+}
+
+.page-content {
+  max-width: 760px;
+  margin: 2rem auto;
+  padding: 0 1.5rem;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+}
+
+.page-meta {
+  font-size: 0.875rem;
+  color: #616e7c;
+  margin-bottom: 1rem;
+  display: flex;
+  gap: 1rem;
+}
+
+.page-body {
+  font-size: 1rem;
+}
+
+.page-body pre {
+  background: #262626;
+  color: #f7f7f9;
+  padding: 1rem;
+  overflow-x: auto;
+  border-radius: 6px;
+}
+
+.page-body code {
+  font-family: "Fira Code", "Source Code Pro", monospace;
+}

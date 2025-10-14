@@ -1,0 +1,58 @@
+[build-system]
+requires = ["hatchling>=1.20.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "simiki3"
+version = "0.1.0-dev"
+description = "Modern Python 3 static wiki generator inspired by Simiki"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+  { name = "Simiki Maintainers" }
+]
+license = { text = "MIT" }
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Internet :: WWW/HTTP :: Site Management",
+  "Topic :: Text Processing :: Markup"
+]
+dependencies = [
+  "typer[all]>=0.12",
+  "jinja2>=3.1",
+  "markdown>=3.5",
+  "pyyaml>=6.0",
+  "pydantic>=2.5",
+  "watchfiles>=0.19",
+  "rich>=13.7"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "pytest-cov>=4.1",
+  "pytest-console-scripts>=1.4"
+]
+
+[project.scripts]
+simiki3 = "simiki3.cli:app"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build]
+include = [
+  "src/simiki3/data/**"
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/simiki3"]
