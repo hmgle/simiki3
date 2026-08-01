@@ -2,6 +2,8 @@
 
 Simiki3 is a Python 3.10+ static wiki generator inspired by [Simiki](https://github.com/tankywoo/simiki). It converts Markdown pages with YAML front matter into a static site, including a catalog, Atom feed, theme assets, and attachments.
 
+Read the [Simiki3 documentation](https://hmgle.github.io/simiki3/) for the full bilingual guide.
+
 ## Install
 
 For development:

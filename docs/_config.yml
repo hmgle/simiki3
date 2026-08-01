@@ -1,0 +1,14 @@
+url: "https://hmgle.github.io"
+title: "Simiki3 Documentation"
+keywords: "Simiki3, Python, static wiki, Markdown, documentation"
+description: "A modern Python 3 static wiki generator for Markdown documentation."
+author: "Simiki3 Maintainers"
+root: "/simiki3"
+source: "content"
+destination: "output"
+attach: "attach"
+themes_dir: "themes"
+theme: "simiki3-docs"
+default_ext: "md"
+pygments: true
+debug: false

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}{{ site.title }}{% endblock %}
+
+{% block container %}
+<main class="home">
+  <section class="hero">
+    <div class="hero-copy">
+      <p class="eyebrow">Python 3 · Markdown · Static sites</p>
+      <h1>Documentation that stays close to your source.</h1>
+      <p class="hero-lead">Simiki3 turns Markdown and YAML front matter into a fast, portable static wiki with themes, feeds, attachments, and a simple local preview workflow.</p>
+      <div class="hero-actions">
+        <a class="button button-primary" href="{{ site.root_url }}/en/index.html">Read in English</a>
+        <a class="button button-secondary" href="{{ site.root_url }}/zh/index.html">阅读中文文档</a>
+      </div>
+    </div>
+    <div class="hero-card">
+      <span class="card-label">Get started</span>
+      <pre><code>simiki3 init my-wiki
+simiki3 build my-wiki
+simiki3 serve my-wiki --watch</code></pre>
+      <p>Build locally. Publish anywhere.</p>
+    </div>
+  </section>
+  <section class="home-catalog">
+    {{ page.content | safe }}
+  </section>
+</main>
+{% endblock %}

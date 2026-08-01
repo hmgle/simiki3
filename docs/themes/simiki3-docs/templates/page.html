@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page.title }} · {{ site.title }}{% endblock %}
+
+{% block container %}
+<div class="docs-layout">
+  <aside class="sidebar">
+    <div class="sidebar-label">{% if page.lang == "zh" %}文档导航{% else %}Documentation{% endif %}</div>
+    <nav class="side-nav" aria-label="Documentation navigation">
+      {% if page.lang == "zh" %}
+      <a class="{% if page.permalink == site.root_url ~ '/zh/index.html' %}active{% endif %}" href="{{ site.root_url }}/zh/index.html">概览</a>
+      <span class="nav-group">开始使用</span>
+      <a class="{% if page.permalink == site.root_url ~ '/zh/getting-started/installation.html' %}active{% endif %}" href="{{ site.root_url }}/zh/getting-started/installation.html">安装</a>
+      <a class="{% if page.permalink == site.root_url ~ '/zh/getting-started/quick-start.html' %}active{% endif %}" href="{{ site.root_url }}/zh/getting-started/quick-start.html">快速开始</a>
+      <span class="nav-group">参考</span>
+      <a class="{% if page.permalink == site.root_url ~ '/zh/reference/cli.html' %}active{% endif %}" href="{{ site.root_url }}/zh/reference/cli.html">CLI 参考</a>
+      <a class="{% if page.permalink == site.root_url ~ '/zh/reference/configuration.html' %}active{% endif %}" href="{{ site.root_url }}/zh/reference/configuration.html">配置</a>
+      <span class="nav-group">指南</span>
+      <a class="{% if page.permalink == site.root_url ~ '/zh/guides/themes.html' %}active{% endif %}" href="{{ site.root_url }}/zh/guides/themes.html">主题</a>
+      <a class="{% if page.permalink == site.root_url ~ '/zh/guides/migration.html' %}active{% endif %}" href="{{ site.root_url }}/zh/guides/migration.html">迁移</a>
+      <span class="nav-group">项目</span>
+      <a class="{% if page.permalink == site.root_url ~ '/zh/development.html' %}active{% endif %}" href="{{ site.root_url }}/zh/development.html">开发</a>
+      <a class="{% if page.permalink == site.root_url ~ '/zh/deployment.html' %}active{% endif %}" href="{{ site.root_url }}/zh/deployment.html">部署</a>
+      <a class="{% if page.permalink == site.root_url ~ '/zh/about/roadmap.html' %}active{% endif %}" href="{{ site.root_url }}/zh/about/roadmap.html">路线图</a>
+      {% else %}
+      <a class="{% if page.permalink == site.root_url ~ '/en/index.html' %}active{% endif %}" href="{{ site.root_url }}/en/index.html">Overview</a>
+      <span class="nav-group">Getting started</span>
+      <a class="{% if page.permalink == site.root_url ~ '/en/getting-started/installation.html' %}active{% endif %}" href="{{ site.root_url }}/en/getting-started/installation.html">Installation</a>
+      <a class="{% if page.permalink == site.root_url ~ '/en/getting-started/quick-start.html' %}active{% endif %}" href="{{ site.root_url }}/en/getting-started/quick-start.html">Quick start</a>
+      <span class="nav-group">Reference</span>
+      <a class="{% if page.permalink == site.root_url ~ '/en/reference/cli.html' %}active{% endif %}" href="{{ site.root_url }}/en/reference/cli.html">CLI reference</a>
+      <a class="{% if page.permalink == site.root_url ~ '/en/reference/configuration.html' %}active{% endif %}" href="{{ site.root_url }}/en/reference/configuration.html">Configuration</a>
+      <span class="nav-group">Guides</span>
+      <a class="{% if page.permalink == site.root_url ~ '/en/guides/themes.html' %}active{% endif %}" href="{{ site.root_url }}/en/guides/themes.html">Themes</a>
+      <a class="{% if page.permalink == site.root_url ~ '/en/guides/migration.html' %}active{% endif %}" href="{{ site.root_url }}/en/guides/migration.html">Migration</a>
+      <span class="nav-group">Project</span>
+      <a class="{% if page.permalink == site.root_url ~ '/en/development.html' %}active{% endif %}" href="{{ site.root_url }}/en/development.html">Development</a>
+      <a class="{% if page.permalink == site.root_url ~ '/en/deployment.html' %}active{% endif %}" href="{{ site.root_url }}/en/deployment.html">Deployment</a>
+      <a class="{% if page.permalink == site.root_url ~ '/en/about/roadmap.html' %}active{% endif %}" href="{{ site.root_url }}/en/about/roadmap.html">Roadmap</a>
+      {% endif %}
+    </nav>
+    {% if page.translation %}
+    <a class="translation-link" href="{{ page.translation }}">{% if page.lang == "zh" %}Read in English →{% else %}阅读中文 →{% endif %}</a>
+    {% endif %}
+  </aside>
+  <main class="doc-main">
+    <div class="breadcrumbs">
+      <a href="{{ site.root_url }}/">{% if page.lang == "zh" %}首页{% else %}Home{% endif %}</a>
+      <span>/</span>
+      <span>{{ page.title }}</span>
+    </div>
+    <article class="doc-article">
+      <div class="doc-meta">
+        <span>{% if page.lang == "zh" %}Simiki3 文档{% else %}Simiki3 docs{% endif %}</span>
+        {% if page.updated or page.date %}<span>·</span><time>{% if page.updated %}{{ page.updated }}{% else %}{{ page.date }}{% endif %}</time>{% endif %}
+      </div>
+      {{ page.content | safe }}
+    </article>
+  </main>
+</div>
+{% endblock %}

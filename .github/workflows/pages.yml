@@ -1,0 +1,65 @@
+name: Deploy documentation
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "docs/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: latest
+
+      - name: Install project
+        run: uv sync --extra dev
+
+      - name: Build documentation
+        run: uv run simiki3 build docs
+
+      - name: Check generated site
+        run: |
+          test -s docs/output/index.html
+          test -s docs/output/en/index.html
+          test -s docs/output/zh/index.html
+          test -s docs/output/atom.xml
+          test -s docs/output/static/css/style.css
+          ! grep -R "hmgle.github.io/simiki3/simiki3" docs/output
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: docs/output
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
