@@ -25,6 +25,11 @@ def compare_directories(legacy: Path, new: Path, *, extensions: Sequence[str] | 
     new = Path(new).resolve()
     result = ValidationResult()
 
+    if not legacy.is_dir():
+        raise FileNotFoundError(f"Legacy build directory not found: {legacy}")
+    if not new.is_dir():
+        raise FileNotFoundError(f"New build directory not found: {new}")
+
     if extensions is not None:
         exts = {ext.lower() if ext.startswith('.') else f'.{ext.lower()}' for ext in extensions}
         def allowed(path: Path) -> bool:
@@ -77,7 +82,5 @@ def _render_diff(legacy_bytes: bytes, new_bytes: bytes, legacy_path: Path, new_p
         fromfile=str(legacy_path),
         tofile=str(new_path),
         lineterm='')
-    snippet = '
-'.join(list(diff_lines)[:limit])
+    snippet = "\n".join(list(diff_lines)[:limit])
     return snippet
-

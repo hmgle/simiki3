@@ -6,8 +6,8 @@
 <div class="title">{{ site.title }}</div>
 
 <div class="index">
-  {%- if site.index %}  {# custom index page #}
-    {{ page.content }}
+  {%- if site.index %}  {# generated index page #}
+    {{ page.content | safe }}
   {%- else %}  {# auto generate index page #}
     {%- for category in pages %}
       {%- if site.default_ext not in category %}  {# is category #}

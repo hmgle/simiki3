@@ -13,6 +13,7 @@ def test_update_site_copies_templates(tmp_path):
     assert (root / '_config.yml.in').exists()
     assert (root / 'fabfile.py').exists()
     assert (root / 'Dockerfile').exists()
+    assert (root / 'content' / 'gettingstarted.md').exists()
     assert result.theme_synced
 
 

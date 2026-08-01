@@ -1,8 +1,16 @@
-# Document:
-# http://simiki.org/docs/configuration.html
+# Simiki3 site configuration template.
 
-url: 
-title: 
-keywords: 
-description: 
-author: 
+url: ""
+title: "Simiki Wiki"
+keywords: ""
+description: ""
+author: ""
+root: "/"
+source: "content"
+destination: "output"
+attach: "attach"
+themes_dir: "themes"
+theme: "simple2"
+default_ext: "md"
+pygments: true
+debug: false

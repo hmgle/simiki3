@@ -9,8 +9,8 @@ from typing import Iterable, List, Tuple
 from rich.console import Console
 from rich.table import Table
 
-from .config import ConfigFiles, SiteConfig
-from .content import Page, discover_markdown_files, load_page
+from .config import ConfigError, ConfigFiles, SiteConfig
+from .content import PageError, discover_markdown_files, load_page
 from .utils import current_timestamp
 import shutil
 import yaml
@@ -32,7 +32,10 @@ class MigrationReport:
 
     @property
     def has_blockers(self) -> bool:
-        return any("layout" in issue.message for issue in self.page_issues)
+        return any(
+            "layout" in issue.message or "cannot be parsed" in issue.message
+            for issue in self.page_issues
+        )
 
     @property
     def issue_count(self) -> int:
@@ -82,8 +85,19 @@ def analyse_site(root: Path, config: SiteConfig) -> MigrationReport:
 
     markdown_files = discover_markdown_files(root / config.source, config=config)
     for file_path in markdown_files:
-        page = load_page(file_path, source_dir=root / config.source, config=config)
-        rel_path = Path(config.source) / page.relative_path
+        relative = file_path.relative_to(root / config.source)
+        rel_path = Path(config.source) / relative
+        try:
+            page = load_page(file_path, source_dir=root / config.source, config=config)
+        except (PageError, UnicodeDecodeError) as exc:
+            report.page_issues.append(
+                PageIssue(
+                    path=rel_path,
+                    message=f"page cannot be parsed: {exc}",
+                    suggestion="Fix the front matter or file encoding before migrating",
+                )
+            )
+            continue
 
         layout = page.meta.get("layout")
         if layout in LEGACY_LAYOUT_VALUES:
@@ -168,7 +182,7 @@ def apply_fixes(
         theme_name = config.theme
         summary.theme_name = theme_name
         theme_dir = root / config.themes_dir / theme_name
-        requires_sync = theme_name in available and not theme_dir.exists()
+        requires_sync = theme_name in available and not (theme_dir / "templates").exists()
         if theme_name in available and requires_sync:
             summary.theme_synced = True
             if not dry_run:
@@ -183,6 +197,8 @@ def _fix_config_file(root: Path, *, dry_run: bool, backup: bool) -> list[str]:
 
     with config_path.open("r", encoding="utf-8") as fh:
         data = yaml.safe_load(fh) or {}
+    if not isinstance(data, dict):
+        raise ConfigError("Configuration root must be a mapping of keys to values")
 
     changed = False
 
@@ -196,8 +212,10 @@ def _fix_config_file(root: Path, *, dry_run: bool, backup: bool) -> list[str]:
         stripped = root_value.strip() or "/"
         if not stripped.startswith("/"):
             stripped = f"/{stripped}"
-        if stripped != root_value:
-            data["root"] = stripped
+        parts = [part for part in stripped.split("/") if part]
+        normalised_root = "/" + "/".join(parts) if parts else "/"
+        if normalised_root != root_value:
+            data["root"] = normalised_root
             changed = True
 
     theme = data.get("theme")
@@ -233,7 +251,10 @@ def _fix_pages(root: Path, config: SiteConfig, *, dry_run: bool, backup: bool) -
 def _fix_single_page(path: Path, config: SiteConfig, *, dry_run: bool, backup: bool) -> list[str]:
     original_text = path.read_text(encoding="utf-8")
     meta_str, body_str = _split_front_matter(original_text)
-    meta = yaml.safe_load(meta_str) if meta_str.strip() else {} if meta_str is not None else {}
+    try:
+        meta = yaml.safe_load(meta_str) if meta_str.strip() else {}
+    except yaml.YAMLError:
+        return []
     if meta is None:
         meta = {}
     if not isinstance(meta, dict):

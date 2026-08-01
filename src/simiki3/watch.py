@@ -41,6 +41,13 @@ class BuildWatcher:
         self._stop_event.set()
         self._thread.join(timeout=5)
 
+    def wait(self) -> None:
+        """Block until watching stops, usually after Ctrl+C or ``stop``."""
+        try:
+            self._thread.join()
+        except KeyboardInterrupt:
+            self.stop()
+
     def _loop(self) -> None:
         try:
             for changes in watch(

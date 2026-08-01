@@ -42,6 +42,8 @@ class Page:
 def discover_markdown_files(source_dir: Path, *, config: SiteConfig) -> list[Path]:
     """Return markdown files under ``source_dir`` respecting hidden folders."""
     source_dir = source_dir.resolve()
+    if not source_dir.exists():
+        return []
     allowed = {config.default_ext.lower(), *_DEFAULT_EXTENSIONS}
     files: list[Path] = []
     for path in source_dir.rglob("*"):
@@ -58,12 +60,15 @@ def discover_markdown_files(source_dir: Path, *, config: SiteConfig) -> list[Pat
         if path.suffix.lower().lstrip('.') not in allowed:
             continue
         files.append(path)
-    return files
+    return sorted(files, key=lambda path: path.relative_to(source_dir).as_posix())
 
 
 def load_page(path: Path, *, source_dir: Path, config: SiteConfig) -> Page:
     """Load a markdown page, parsing YAML front matter and rendering to HTML."""
-    text = path.read_text(encoding="utf-8")
+    try:
+        text = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        raise PageError(f"Page is not valid UTF-8: {path}") from exc
     meta_text, markdown_text = _split_front_matter(text)
 
     try:
@@ -110,8 +115,7 @@ def _split_front_matter(text: str) -> tuple[str, str]:
         meta_lines.append(lines[idx])
         idx += 1
     else:
-        # No closing delimiter found; treat whole file as body
-        return "", text
+        raise PageError("Unclosed YAML front matter")
 
     body_lines = lines[idx + 1 :]
     meta_text = "\n".join(meta_lines)

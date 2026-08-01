@@ -47,6 +47,18 @@ def test_analyse_site_warns_missing_date(tmp_path):
     report = analyse_site(root, config)
     assert any("missing date" in issue.message for issue in report.page_issues)
 
+
+def test_analyse_site_reports_unparseable_page(tmp_path):
+    root = tmp_path / "site"
+    initialise_site(root)
+    config = default_config()
+    bad_page = root / config.source / "intro" / "bad.md"
+    bad_page.write_text("---\ntitle: Broken\n", encoding="utf-8")
+
+    report = analyse_site(root, config)
+
+    assert any("cannot be parsed" in issue.message for issue in report.page_issues)
+
 def test_apply_fixes_updates_layout_and_date(tmp_path):
     root = tmp_path / "site"
     initialise_site(root)

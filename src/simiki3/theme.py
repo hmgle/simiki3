@@ -7,7 +7,13 @@ from importlib import resources
 from pathlib import Path
 from typing import List
 
-from jinja2 import Environment, FileSystemLoader, TemplateNotFound, select_autoescape
+from jinja2 import (
+    Environment,
+    FileSystemLoader,
+    TemplateError,
+    TemplateNotFound,
+    select_autoescape,
+)
 
 from .config import SiteConfig
 
@@ -30,11 +36,11 @@ class ThemeRenderer:
     """Render site templates from the configured theme."""
 
     def __init__(self, theme_root: Path) -> None:
-        if not theme_root.exists():
+        if not theme_root.is_dir():
             raise ThemeError(f"Theme directory does not exist: {theme_root}")
 
         templates = theme_root / "templates"
-        if not templates.exists():
+        if not templates.is_dir():
             raise ThemeError(f"Theme templates directory missing: {templates}")
 
         self.paths = ThemePaths(root=theme_root, templates=templates, static=theme_root / "static")
@@ -54,7 +60,10 @@ class ThemeRenderer:
                 template = self.env.get_template("page.html")
             except TemplateNotFound as exc:  # pragma: no cover
                 raise ThemeError(f"Theme does not provide a 'page.html' template") from exc
-        return template.render(context)
+        try:
+            return template.render(context)
+        except TemplateError as exc:
+            raise ThemeError(f"Failed to render theme layout '{layout}'") from exc
 
 
 def builtin_themes() -> List[str]:

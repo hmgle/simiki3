@@ -13,7 +13,6 @@ import yaml
 from .config import ConfigFiles, SiteConfig, default_config
 
 _TEMPLATES_PACKAGE = "simiki3.data.site_template"
-_DEFAULT_THEME_NAME = "default"
 _DEMO_CATEGORY = "intro"
 _DEMO_FILENAME = "welcome.md"
 
@@ -108,7 +107,7 @@ def initialise_site(
 
 
 def _critical_paths(target: Path, config: SiteConfig) -> list[Path]:
-    theme_root = Path(config.themes_dir) / _DEFAULT_THEME_NAME
+    theme_root = Path(config.themes_dir) / config.theme
     return [
         ConfigFiles().resolve(target),
         target / config.source,
@@ -119,7 +118,7 @@ def _critical_paths(target: Path, config: SiteConfig) -> list[Path]:
 
 
 def _required_directories(target: Path, config: SiteConfig) -> Iterable[Path]:
-    theme_root = Path(config.themes_dir) / _DEFAULT_THEME_NAME
+    theme_root = Path(config.themes_dir) / config.theme
     return [
         target / config.source,
         target / config.destination,
@@ -152,8 +151,10 @@ def _write_file(path: Path, content: str | bytes, *, force: bool, result: InitRe
 
 
 def _copy_theme_assets(target: Path, config: SiteConfig, *, force: bool, result: InitResult) -> None:
-    theme_root = resources.files(_TEMPLATES_PACKAGE) / "themes" / _DEFAULT_THEME_NAME
-    destination_root = target / config.themes_dir / _DEFAULT_THEME_NAME
+    theme_root = resources.files(_TEMPLATES_PACKAGE) / "themes" / config.theme
+    if not theme_root.is_dir():
+        raise FileNotFoundError(f"Bundled theme not found: {config.theme}")
+    destination_root = target / config.themes_dir / config.theme
 
     for entry in theme_root.rglob("*"):
         relative = Path(entry.relative_to(theme_root))
@@ -181,7 +182,7 @@ def _demo_markdown(config: SiteConfig) -> str:
         "## Next steps\n\n"
         "- Create additional markdown files inside the category directories.\n"
         "- Adjust the site metadata in `_config.yml`.\n"
-        f"- Customise the theme in `{config.themes_dir}/{_DEFAULT_THEME_NAME}`.\n"
+        f"- Customise the theme in `{config.themes_dir}/{config.theme}`.\n"
     )
 
 

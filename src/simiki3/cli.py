@@ -12,13 +12,22 @@ from rich.panel import Panel
 
 from . import __version__
 from .build import build_site
-from .config import ConfigError, ConfigFiles, default_config, load_config
+from .config import (
+    ConfigError,
+    ConfigFiles,
+    SiteConfig,
+    default_config,
+    load_config,
+    load_legacy_config,
+)
 from .content import PageError
 from .migration import analyse_site, apply_fixes
-from .page_scaffold import PageExistsError, create_page
+from .page_scaffold import InvalidPagePathError, PageExistsError, create_page
 from .scaffold import initialise_site
 from .serve import PreviewServer
 from .theme import ThemeError, builtin_themes, sync_theme_to_site
+from .update_site import update_site
+from .validate import compare_directories
 from .watch import BuildWatcher
 
 app = typer.Typer(help="Static wiki generator rewritten for Python 3.")
@@ -33,6 +42,16 @@ def _project_root(path: Optional[Path]) -> Path:
     if path is None:
         return Path.cwd()
     return Path(path).expanduser().resolve()
+
+
+def _load_migration_config(root: Path) -> tuple[SiteConfig, bool]:
+    """Load strict config first, then tolerate legacy Simiki fields."""
+
+    config_path = ConfigFiles().resolve(root)
+    try:
+        return load_config(config_path), False
+    except ConfigError:
+        return load_legacy_config(config_path), True
 
 
 @app.callback(invoke_without_command=True)
@@ -135,6 +154,9 @@ def new(
     except PageExistsError as exc:
         console.print(f"[red]Page exists[/red]: {exc}")
         raise typer.Exit(1)
+    except (InvalidPagePathError, ValueError) as exc:
+        console.print(f"[red]Invalid page[/red]: {exc}")
+        raise typer.Exit(1)
 
     rel_path = result.path.relative_to(target)
     console.print(
@@ -147,12 +169,9 @@ def new(
 def build(
     path: Optional[Path] = typer.Argument(None, help="Path to an existing wiki (defaults to current directory)."),
     include_drafts: bool = typer.Option(False, "--include-drafts", help="Include pages marked as draft metadata."),
-    watch: bool = typer.Option(False, "--watch", "-w", help="Watch source files and rebuild automatically (coming soon)."),
+    watch: bool = typer.Option(False, "--watch", "-w", help="Watch source files and rebuild automatically."),
 ) -> None:
     """Build static HTML output from content."""
-
-    if watch:
-        console.print("[yellow]Watch mode is not yet implemented; building once.[/yellow]")
 
     target = _project_root(path)
     try:
@@ -200,6 +219,32 @@ def build(
             skip_table.add_row(rel)
         console.print(skip_table)
 
+    if watch:
+        console.print("Watching for changes… (press Ctrl+C to stop)")
+
+        def on_rebuild(rebuilt, changes):
+            change_summary = ", ".join(Path(changed).name for _, changed in changes)
+            console.print(
+                f"[cyan]Rebuilt[/cyan] ({len(rebuilt.rendered)} pages rendered, "
+                f"{len(rebuilt.skipped)} skipped)"
+                + (f" due to {change_summary}" if change_summary else "")
+            )
+
+        def on_error(exc: Exception) -> None:
+            console.print(f"[red]Build error during watch[/red]: {exc}")
+
+        watcher = BuildWatcher(
+            root=target,
+            include_drafts=include_drafts,
+            on_rebuild=on_rebuild,
+            on_error=on_error,
+        )
+        watcher.start()
+        try:
+            watcher.wait()
+        finally:
+            watcher.stop()
+
 
 @theme_app.command("list")
 def theme_list() -> None:
@@ -218,7 +263,50 @@ def theme_list() -> None:
 
 
 @theme_app.command("sync")
-def theme_sync
+def theme_sync(
+    theme: Optional[str] = typer.Argument(
+        None, help="Theme name to copy (defaults to the site's configured theme)."
+    ),
+    path: Optional[Path] = typer.Option(
+        None, "--path", help="Path to the wiki (defaults to current directory)."
+    ),
+    force: bool = typer.Option(
+        False, "--force", "-f", help="Overwrite existing files when syncing."
+    ),
+) -> None:
+    """Copy a bundled theme into the site's theme directory."""
+
+    target = _project_root(path)
+    try:
+        config = load_config(ConfigFiles().resolve(target))
+    except (FileNotFoundError, ConfigError) as exc:
+        console.print(f"[red]Configuration error[/red]: {exc}")
+        raise typer.Exit(1)
+
+    theme_name = theme or config.theme
+    try:
+        result = sync_theme_to_site(target, config, theme_name, force=force)
+    except ThemeError as exc:
+        console.print(f"[red]Theme error[/red]: {exc}")
+        raise typer.Exit(1)
+
+    console.print(
+        f"[green]Synced theme[/green] '{theme_name}' into "
+        f"{config.themes_dir}/{theme_name}"
+    )
+
+    def _print_paths(title: str, paths: list[Path], style: str) -> None:
+        if not paths:
+            return
+        table = Table(title=title)
+        table.add_column("Path", style=style)
+        for rel in sorted(str(p) for p in paths):
+            table.add_row(rel)
+        console.print(table)
+
+    _print_paths("Created files", result.created, "green")
+    _print_paths("Overwritten files", result.overwritten, "yellow")
+    _print_paths("Skipped files", result.skipped, "red")
 
 @app.command()
 def update(
@@ -282,7 +370,11 @@ def validate(
     """Compare legacy and simiki3 builds and report differences."""
 
     exts = [ext.strip() for ext in extensions.split(',') if ext.strip()] or None
-    result = compare_directories(legacy, new, extensions=exts)
+    try:
+        result = compare_directories(legacy, new, extensions=exts)
+    except OSError as exc:
+        console.print(f"[red]Validation error[/red]: {exc}")
+        raise typer.Exit(1)
 
     def _render_table(title: str, items: list[Path], style: str) -> None:
         if not items:
@@ -307,41 +399,6 @@ def validate(
     else:
         console.print('[red]Differences detected. Review the tables above.[/red]')
         raise typer.Exit(1)
-(
-    theme: Optional[str] = typer.Argument(None, help="Theme name to copy (defaults to the site's configured theme)."),
-    path: Optional[Path] = typer.Option(None, "--path", help="Path to the wiki (defaults to current directory)."),
-    force: bool = typer.Option(False, "--force", "-f", help="Overwrite existing files when syncing."),
-) -> None:
-    """Copy a bundled theme into the site's theme directory."""
-
-    target = _project_root(path)
-    try:
-        config = load_config(ConfigFiles().resolve(target))
-    except (FileNotFoundError, ConfigError) as exc:
-        console.print(f"[red]Configuration error[/red]: {exc}")
-        raise typer.Exit(1)
-
-    theme_name = theme or config.theme
-    try:
-        result = sync_theme_to_site(target, config, theme_name, force=force)
-    except ThemeError as exc:
-        console.print(f"[red]Theme error[/red]: {exc}")
-        raise typer.Exit(1)
-
-    console.print(f"[green]Synced theme[/green] '{theme_name}' into {config.themes_dir}/{theme_name}")
-
-    def _print_paths(title: str, paths: list[Path], style: str) -> None:
-        if not paths:
-            return
-        table = Table(title=title)
-        table.add_column("Path", style=style)
-        for rel in sorted(str(p) for p in paths):
-            table.add_row(rel)
-        console.print(table)
-
-    _print_paths("Created files", result.created, "green")
-    _print_paths("Overwritten files", result.overwritten, "yellow")
-    _print_paths("Skipped files", result.skipped, "red")
 
 
 @migration_app.command("audit")
@@ -352,12 +409,16 @@ def migrate_audit(
 
     target = _project_root(path)
     try:
-        config = load_config(ConfigFiles().resolve(target))
+        config, used_legacy_loader = _load_migration_config(target)
     except (FileNotFoundError, ConfigError) as exc:
         console.print(f"[red]Configuration error[/red]: {exc}")
         raise typer.Exit(1)
 
     report = analyse_site(target, config)
+    if used_legacy_loader:
+        report.config_warnings.append(
+            "Legacy configuration fields or values require normalisation before migration."
+        )
     report.display(console)
 
     if report.has_blockers:
@@ -387,7 +448,7 @@ def migrate_fix(
 
     target = _project_root(path)
     try:
-        config_obj = load_config(ConfigFiles().resolve(target))
+        config_obj, _ = _load_migration_config(target)
     except (FileNotFoundError, ConfigError) as exc:
         console.print(f"[red]Configuration error[/red]: {exc}")
         raise typer.Exit(1)
@@ -429,7 +490,7 @@ def migrate_fix(
             console.print(
                 f"[yellow]Theme '{config_obj.theme}' is not bundled with simiki3; migrate it manually.[/yellow]"
             )
-        elif not theme_dir.exists():
+        elif not (theme_dir / "templates").exists():
             console.print(
                 "[yellow]Theme assets not present; run without --dry-run to sync bundled theme.[/yellow]"
             )
@@ -512,11 +573,13 @@ def goals() -> None:
     """Show the current roadmap milestones."""
     table = Table(title="simiki3 Roadmap")
     table.add_column("Milestone", style="cyan", justify="left")
-    table.add_column("Description", style="green", justify="left")
-    table.add_row("Baseline scaffolding", "Current phase: CLI skeleton and packaging setup")
-    table.add_row("Site initialization", "Implement project generator and default theme embedding")
-    table.add_row("Content pipeline", "Markdown rendering, template rendering, tagging, feeds")
-    table.add_row("Preview & watch", "Run local server with incremental rebuilds")
+    table.add_column("Status", style="green", justify="left")
+    table.add_row("CLI & packaging", "Implemented: init/new/build/theme/update/validate/serve/migrate")
+    table.add_row("Site initialization", "Implemented: project generator and bundled themes")
+    table.add_row("Content pipeline", "Implemented: Markdown, catalog, Atom feed, attachments")
+    table.add_row("Preview & watch", "Implemented: local server with incremental rebuilds")
+    table.add_row("Deployment helpers", "Planned: port rsync/git/FTP deploy support from Simiki")
+    table.add_row("Release hardening", "Planned: CI, documentation, first release")
     console.print(table)
 
 

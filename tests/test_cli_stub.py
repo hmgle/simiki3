@@ -19,7 +19,7 @@ def test_goals_command_outputs_table():
     result = runner.invoke(app, ["goals"])
     assert result.exit_code == 0
     assert "Roadmap" in result.stdout
-    assert "Baseline scaffolding" in result.stdout
+    assert "CLI & packaging" in result.stdout
 
 
 def test_init_creates_project_structure():
@@ -32,7 +32,7 @@ def test_init_creates_project_structure():
         assert "Initialized wiki" in output
         assert (target / "_config.yml").exists()
         assert (target / "content" / "intro" / "welcome.md").exists()
-        assert (target / "themes" / "default" / "templates" / "page.html").exists()
+        assert (target / "themes" / "simple2" / "templates" / "page.html").exists()
 
 
 def test_init_refuses_to_overwrite_without_force(tmp_path):
@@ -81,7 +81,7 @@ def test_new_command_creates_page(tmp_path):
     output_file = site / "content" / "notes" / "my-new-page.md"
     assert output_file.exists()
     content = output_file.read_text(encoding="utf-8")
-    assert "title: \"My New Page\"" in content
+    assert yaml.safe_load(content.split("---", 2)[1])["title"] == "My New Page"
 
 
 def test_theme_list_command(tmp_path):
@@ -280,4 +280,3 @@ def test_validate_command_flags_differences(tmp_path):
     result = runner.invoke(app, ['validate', str(legacy), str(new)])
     assert result.exit_code == 1
     assert 'Changed files' in result.stdout
-
