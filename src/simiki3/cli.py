@@ -573,11 +573,13 @@ def goals() -> None:
     """Show the current roadmap milestones."""
     table = Table(title="simiki3 Roadmap")
     table.add_column("Milestone", style="cyan", justify="left")
-    table.add_column("Description", style="green", justify="left")
-    table.add_row("Baseline scaffolding", "Current phase: CLI skeleton and packaging setup")
-    table.add_row("Site initialization", "Implement project generator and default theme embedding")
-    table.add_row("Content pipeline", "Markdown rendering, template rendering, tagging, feeds")
-    table.add_row("Preview & watch", "Run local server with incremental rebuilds")
+    table.add_column("Status", style="green", justify="left")
+    table.add_row("CLI & packaging", "Implemented: init/new/build/theme/update/validate/serve/migrate")
+    table.add_row("Site initialization", "Implemented: project generator and bundled themes")
+    table.add_row("Content pipeline", "Implemented: Markdown, catalog, Atom feed, attachments")
+    table.add_row("Preview & watch", "Implemented: local server with incremental rebuilds")
+    table.add_row("Deployment helpers", "Planned: port rsync/git/FTP deploy support from Simiki")
+    table.add_row("Release hardening", "Planned: CI, documentation, first release")
     console.print(table)
 
 

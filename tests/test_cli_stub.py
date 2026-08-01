@@ -19,7 +19,7 @@ def test_goals_command_outputs_table():
     result = runner.invoke(app, ["goals"])
     assert result.exit_code == 0
     assert "Roadmap" in result.stdout
-    assert "Baseline scaffolding" in result.stdout
+    assert "CLI & packaging" in result.stdout
 
 
 def test_init_creates_project_structure():
