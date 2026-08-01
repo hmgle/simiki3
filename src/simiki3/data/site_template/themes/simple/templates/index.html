@@ -24,7 +24,7 @@
 
     <div id="index">
   {% if site.index %}
-    {{ page.content }}
+    {{ page.content | safe }}
   {% else %}
   {% for category_name, pages in site.structure.items() %}
     {# Top-level wiki pages not display in index #}

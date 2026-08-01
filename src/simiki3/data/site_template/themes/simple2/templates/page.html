@@ -29,7 +29,7 @@
 
 <div class="page_title">{{ page.title }}</div>
 
-  {{ page.content }}
+  {{ page.content | safe }}
 
   {%- if page.relation %}
   <div class="relation">

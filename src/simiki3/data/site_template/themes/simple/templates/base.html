@@ -14,7 +14,7 @@
     <body>
         <div id="container">
             {% block container %}
-                {{ page.content }}
+                {{ page.content | safe }}
             {% endblock %}
         </div>
         <div id="footer">

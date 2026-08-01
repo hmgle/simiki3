@@ -98,3 +98,20 @@ def test_build_site_supports_configured_legacy_theme_and_root(tmp_path):
     assert "Pages" in index_html
     assert "https://example.com/wiki/docs/atom.xml" in feed_xml
     assert "https:/example.com" not in feed_xml
+
+
+@pytest.mark.parametrize("theme", ["default", "simple", "simple2"])
+def test_build_site_does_not_escape_rendered_html(tmp_path, theme):
+    """Rendered Markdown must reach the page as HTML, not escaped text."""
+    site_root = tmp_path / "site"
+    config = default_config().with_overrides(theme=theme)
+    initialise_site(site_root, config=config)
+
+    build_site(site_root, config=config)
+
+    page_html = (site_root / "output" / "intro" / "welcome.html").read_text(encoding="utf-8")
+    index_html = (site_root / "output" / "index.html").read_text(encoding="utf-8")
+    assert "<h1" in page_html
+    assert "&lt;h1" not in page_html
+    assert "<h1>Pages</h1>" in index_html
+    assert "&lt;h1" not in index_html

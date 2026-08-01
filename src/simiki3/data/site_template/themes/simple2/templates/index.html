@@ -7,7 +7,7 @@
 
 <div class="index">
   {%- if site.index %}  {# generated index page #}
-    {{ page.content }}
+    {{ page.content | safe }}
   {%- else %}  {# auto generate index page #}
     {%- for category in pages %}
       {%- if site.default_ext not in category %}  {# is category #}
