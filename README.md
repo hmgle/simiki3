@@ -78,7 +78,21 @@ The optional `--examples` update copies the getting-started page into the config
 
 ```bash
 uv run --extra dev pytest -q
+uv run --extra dev ruff check src tests
 uv run --extra dev python -m compileall -q src tests
 ```
 
 The project is pre-alpha. The end-to-end smoke path is `init → build → serve`; theme and migration changes should be covered by integration tests before release.
+
+## Roadmap
+
+Run `simiki3 goals` for the live version of this table.
+
+| Milestone | Status |
+| --- | --- |
+| CLI & packaging | Implemented: init/new/build/theme/update/validate/serve/migrate |
+| Site initialization | Implemented: project generator and bundled themes |
+| Content pipeline | Implemented: Markdown, catalog, Atom feed, attachments |
+| Preview & watch | Implemented: local server with incremental rebuilds |
+| Deployment helpers | Planned: port rsync/git/FTP deploy support from Simiki |
+| Release hardening | Planned: CI, documentation, first release |
