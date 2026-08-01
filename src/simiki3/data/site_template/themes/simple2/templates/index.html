@@ -6,7 +6,7 @@
 <div class="title">{{ site.title }}</div>
 
 <div class="index">
-  {%- if site.index %}  {# custom index page #}
+  {%- if site.index %}  {# generated index page #}
     {{ page.content }}
   {%- else %}  {# auto generate index page #}
     {%- for category in pages %}

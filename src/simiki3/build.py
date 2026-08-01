@@ -5,7 +5,7 @@ from __future__ import annotations
 import shutil
 from collections import defaultdict, OrderedDict
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Iterable, Sequence
 import html
@@ -48,6 +48,7 @@ class SiteBuilder:
         self.theme_root = self.root / config.themes_dir / config.theme
         self.renderer = ThemeRenderer(self.theme_root)
         self._site_structure: OrderedDict[str, dict] | dict = OrderedDict()
+        self._build_time = datetime.now(timezone.utc)
 
     def build(self, *, include_drafts: bool = False) -> BuildResult:
         result = BuildResult()
@@ -79,10 +80,10 @@ class SiteBuilder:
         for entry in list(self.output_dir.iterdir()):
             if entry.name in {".git", "CNAME", "favicon.ico"}:
                 continue
-            if entry.is_dir():
-                shutil.rmtree(entry)
-            else:
+            if entry.is_symlink() or entry.is_file():
                 entry.unlink()
+            elif entry.is_dir():
+                shutil.rmtree(entry)
 
     def _load_pages(self) -> list[Page]:
         if not self.source_dir.exists():
@@ -137,6 +138,9 @@ class SiteBuilder:
         site_dict = self.config.as_dict()
         if self._site_structure:
             site_dict.update({"structure": self._site_structure})
+        site_dict["index"] = relative_output == Path("index.html")
+        site_dict["time"] = self._build_time
+        site_dict["root_url"] = "" if self.config.root == "/" else self.config.root.rstrip("/")
         output_path = self.output_dir / relative_output
         permalink = self._permalink(relative_output)
         page_dict = dict(meta)
@@ -151,6 +155,8 @@ class SiteBuilder:
         return {
             "site": site_dict,
             "page": page_dict,
+            "pages": _legacy_pages(self._site_structure),
+            "default_home_page": relative_output == Path("index.html"),
         }
 
     def _generate_catalog(self, pages: Sequence[Page], result: BuildResult) -> None:
@@ -171,7 +177,7 @@ class SiteBuilder:
                 lines.append("<ul>")
                 for page in sorted(categories[category], key=_title_sort_key):
                     permalink = self._permalink(page.output_relative)
-                    title = html.escape(page.meta.get("title", page.output_relative.stem))
+                    title = html.escape(str(page.meta.get("title", page.output_relative.stem)))
                     summary_text = _page_summary(page, length=140)
                     summary = html.escape(summary_text) if summary_text else ""
                     lines.append(
@@ -207,18 +213,21 @@ class SiteBuilder:
 
         if site_url:
             ET.SubElement(feed, "link", href=site_url + self.config.root)
-            ET.SubElement(feed, "link", rel="self", href=f"{site_url}{self.config.root}/atom.xml".replace("//", "/"))
+            root_path = "" if self.config.root == "/" else self.config.root.rstrip("/")
+            ET.SubElement(feed, "link", rel="self", href=f"{site_url.rstrip('/')}{root_path}/atom.xml")
 
         for page in entries[:20]:
             entry = ET.SubElement(feed, "entry")
-            ET.SubElement(entry, "title").text = page.meta.get("title", page.output_relative.stem)
+            ET.SubElement(entry, "title").text = str(
+                page.meta.get("title", page.output_relative.stem)
+            )
             url = self._permalink(page.output_relative, absolute=True)
             ET.SubElement(entry, "id").text = url
             ET.SubElement(entry, "link", href=url)
             ET.SubElement(entry, "updated").text = _page_updated(page).isoformat()
             summary_text = page.meta.get("description") or _page_summary(page)
             summary_el = ET.SubElement(entry, "summary", type="html")
-            summary_el.text = summary_text
+            summary_el.text = str(summary_text)
 
         _indent_xml(feed)
         output = ET.tostring(feed, encoding="utf-8")
@@ -254,7 +263,8 @@ class SiteBuilder:
         return _sort_structure(root)
 
     def _permalink(self, relative_output: Path, absolute: bool = False) -> str:
-        root_path = f"{self.config.root}/{relative_output.as_posix()}".replace("//", "/")
+        root_prefix = "" if self.config.root == "/" else self.config.root.rstrip("/")
+        root_path = f"{root_prefix}/{relative_output.as_posix()}"
         if absolute and self.config.url:
             return f"{self.config.url.rstrip('/')}{root_path}"
         return root_path
@@ -262,7 +272,7 @@ class SiteBuilder:
 
 def _title_sort_key(page: Page) -> tuple[str, str]:
     title = page.meta.get("title", page.output_relative.stem)
-    return (title.lower(), page.output_relative.as_posix())
+    return (str(title).lower(), page.output_relative.as_posix())
 
 
 def _page_updated(page: Page) -> datetime:
@@ -273,6 +283,8 @@ def _page_updated(page: Page) -> datetime:
 def _coerce_datetime(value) -> datetime:
     if isinstance(value, datetime):
         dt = value
+    elif isinstance(value, date):
+        dt = datetime.combine(value, datetime.min.time())
     elif isinstance(value, str):
         value = value.strip()
         value = value.replace("Z", "+00:00")
@@ -299,7 +311,7 @@ def _page_summary(page: Page, *, length: int = 200) -> str:
     summary = page.meta.get("summary") or page.meta.get("description")
     if not summary:
         summary = strip_html(page.html) or page.markdown
-    summary = summary.strip()
+    summary = str(summary).strip()
     if len(summary) > length:
         summary = summary[:length].rstrip() + "…"
     return summary
@@ -329,7 +341,7 @@ def _sort_structure(structure: dict) -> OrderedDict:
     items = []
     for key, value in structure.items():
         if isinstance(value, dict) and "title" in value:
-            sort_key = value.get("title", key).lower()
+            sort_key = str(value.get("title", key)).lower()
         else:
             sort_key = key.lower()
         items.append((key, value, sort_key))
@@ -343,14 +355,46 @@ def _sort_structure(structure: dict) -> OrderedDict:
 
 def _build_structure_entry(page: Page, permalink: str) -> dict:
     entry = {
-        "title": page.meta.get("title", page.output_relative.stem),
+        "title": str(page.meta.get("title", page.output_relative.stem)),
         "name": page.output_relative.stem,
         "permalink": permalink,
     }
-    for key in ("date", "updated", "tags", "category"):
+    for key in ("date", "updated", "tags", "category", "description", "summary"):
         if key in page.meta:
             entry[key] = page.meta[key]
     return entry
+
+
+def _legacy_pages(structure: dict) -> list[dict]:
+    """Adapt the new structure to the data shape used by bundled legacy themes."""
+
+    categories: list[dict] = []
+    for category_name, category in structure.items():
+        categories.append(
+            {
+                "name": category_name,
+                "pages": _legacy_page_entries(category),
+            }
+        )
+    return categories
+
+
+def _legacy_page_entries(category: dict) -> list[dict]:
+    entries: list[dict] = []
+    for filename, value in category.items():
+        if isinstance(value, dict) and "title" in value:
+            entry = dict(value)
+            entry["fname"] = filename
+            entry["filename"] = f"{value.get('name', Path(filename).stem)}.html"
+            entries.append(entry)
+        elif isinstance(value, dict):
+            entries.append(
+                {
+                    "name": filename,
+                    "pages": _legacy_page_entries(value),
+                }
+            )
+    return entries
 
 
 def build_site(

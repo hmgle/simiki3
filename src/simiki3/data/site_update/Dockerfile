@@ -1,11 +1,11 @@
-FROM python:2.7.11
+FROM python:3.12-slim
 
-WORKDIR /src
+WORKDIR /site
 
-COPY . /src
-RUN pip install simiki
-RUN simiki g
+COPY . /site
+RUN python -m pip install --no-cache-dir simiki3
+RUN simiki3 build /site
 
-CMD ["simiki", "p", "-w", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["simiki3", "serve", "/site", "--host", "0.0.0.0", "--port", "8000"]
 
 EXPOSE 8000

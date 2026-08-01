@@ -5,10 +5,11 @@ from __future__ import annotations
 import io
 from dataclasses import dataclass
 from pathlib import Path
+from pathlib import PurePosixPath
 from typing import Any, Mapping, MutableMapping
 
 import yaml
-from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, ValidationError, field_validator, model_validator
 
 
 class ConfigError(ValueError):
@@ -53,9 +54,10 @@ class SiteConfig(BaseModel):
         value = value.strip() or "/"
         if not value.startswith("/"):
             raise ValueError("root must start with '/'")
-        if len(value) > 1 and value.endswith("/"):
-            value = value[:-1]
-        return value
+        if "\\" in value or ".." in PurePosixPath(value).parts:
+            raise ValueError("root must not contain path traversal")
+        parts = [part for part in value.split("/") if part]
+        return "/" + "/".join(parts) if parts else "/"
 
     @field_validator("source", "destination", "attach", "themes_dir", "theme")
     @classmethod
@@ -63,7 +65,15 @@ class SiteConfig(BaseModel):
         value = value.strip()
         if not value:
             raise ValueError("string value must not be empty")
-        return value.strip("/ ")
+        if value.startswith(("/", "\\")) or "\\" in value:
+            raise ValueError("path value must be relative to the site root")
+        path = PurePosixPath(value)
+        if path.is_absolute() or ".." in path.parts:
+            raise ValueError("path value must not contain path traversal")
+        normalised = path.as_posix()
+        if normalised in {"", "."}:
+            raise ValueError("string value must not be empty")
+        return normalised
 
     @field_validator("default_ext")
     @classmethod
@@ -71,12 +81,35 @@ class SiteConfig(BaseModel):
         value = value.strip().lstrip(".").lower()
         if not value:
             raise ValueError("default_ext must contain characters")
+        if "/" in value or "\\" in value or value in {".", ".."}:
+            raise ValueError("default_ext must be a filename extension")
         return value
+
+    @model_validator(mode="after")
+    def _validate_directory_layout(self) -> "SiteConfig":
+        directories = {
+            "source": self.source,
+            "destination": self.destination,
+            "attach": self.attach,
+            "themes_dir": self.themes_dir,
+        }
+        items = list(directories.items())
+        for index, (field_name, directory) in enumerate(items):
+            current = PurePosixPath(directory)
+            for other_name, other_directory in items[index + 1 :]:
+                other = PurePosixPath(other_directory)
+                if current == other or current in other.parents or other in current.parents:
+                    raise ValueError(
+                        f"{field_name} and {other_name} must not overlap"
+                    )
+        return self
 
     def with_overrides(self, **overrides: Any) -> "SiteConfig":
         """Return a new config with fields replaced by ``overrides``."""
         try:
-            return self.model_copy(update=overrides)
+            values = self.model_dump()
+            values.update(overrides)
+            return type(self).model_validate(values)
         except ValidationError as exc:  # pragma: no cover - delegated to pydantic
             raise ConfigError("Invalid configuration overrides", validation_error=exc) from exc
 
@@ -121,6 +154,48 @@ def load_config(config_path: Path, *, overrides: Mapping[str, Any] | None = None
         return SiteConfig(**merged)
     except ValidationError as exc:
         raise ConfigError("Invalid configuration values", validation_error=exc) from exc
+
+
+def load_legacy_config(config_path: Path) -> SiteConfig:
+    """Load a legacy config with the small set of normalisations migration needs.
+
+    Legacy Simiki configurations commonly contain deployment-specific keys that
+    are intentionally not part of :class:`SiteConfig`.  Migration must still be
+    able to inspect and repair those files, so unknown keys are ignored here and
+    path-like values are normalised before strict validation.
+    """
+
+    config_path = Path(config_path)
+    if not config_path.exists():
+        raise FileNotFoundError(f"Configuration file not found: {config_path}")
+
+    try:
+        with config_path.open("r", encoding="utf-8") as stream:
+            data = yaml.safe_load(stream) or {}
+    except yaml.YAMLError as exc:
+        raise ConfigError(f"Failed to parse YAML configuration: {exc}") from exc
+
+    if not isinstance(data, MutableMapping):
+        raise ConfigError("Configuration root must be a mapping of keys to values")
+
+    merged = default_config().model_dump()
+    path_fields = {"source", "destination", "attach", "themes_dir", "theme"}
+    for field_name in SiteConfig.model_fields:
+        if field_name not in data:
+            continue
+        value = data[field_name]
+        if field_name == "root" and isinstance(value, str):
+            value = value.strip() or "/"
+            if not value.startswith("/"):
+                value = f"/{value}"
+        elif field_name in path_fields and isinstance(value, str):
+            value = value.strip().strip("/ ")
+        merged[field_name] = value
+
+    try:
+        return SiteConfig.model_validate(merged)
+    except ValidationError as exc:
+        raise ConfigError("Invalid legacy configuration values", validation_error=exc) from exc
 
 
 @dataclass(frozen=True)

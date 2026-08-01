@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+"""Legacy Fabric deployment helper kept for existing Simiki sites.
+
+This file is not part of the Simiki3 runtime. It still requires a compatible
+Fabric installation and should be migrated before it is executed.
+"""
 # -*- coding: utf-8 -*-
 from __future__ import print_function, absolute_import, with_statement
 

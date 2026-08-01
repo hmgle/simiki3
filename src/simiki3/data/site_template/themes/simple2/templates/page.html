@@ -6,7 +6,7 @@
 <div id="header">
   <div class="post-nav">
     {%- if not default_home_page -%}
-    <a href="{{ site.root }}/">Home</a>
+    <a href="{{ site.root_url }}/">Home</a>
       {%- if page.category -%}
         {%- for c in page.category.split("/") -%}
           {%- if loop.first -%}
@@ -14,7 +14,7 @@
           {%- else -%}
             {% set id = id ~ "-" ~ c -%}
           {%- endif -%}
-          &nbsp;&#187;&nbsp;<a href="{{ site.root }}/#{{ id }}">{{ c }}</a>
+          &nbsp;&#187;&nbsp;<a href="{{ site.root_url }}/#{{ id }}">{{ c }}</a>
         {%- endfor -%}
       {%- endif -%}
       &nbsp;&#187;&nbsp;{{ page.title }}
@@ -36,7 +36,7 @@
     <h2>Related</h2>
     <ul>
     {% for r in page.relation %}
-    <li><a href="{{ site.root }}/{{ r.category }}/{{ r.filename }}">{{ r.title }}</a></li>
+    <li><a href="{{ site.root_url }}/{{ r.category }}/{{ r.filename }}">{{ r.title }}</a></li>
     {% endfor %}
     </ul>
   </div>

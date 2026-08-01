@@ -5,11 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from importlib import resources
 from pathlib import Path
-from typing import Iterable, List
 
 from .config import ConfigFiles, SiteConfig, load_config
 from .theme import builtin_themes, sync_theme_to_site
-from .utils import current_timestamp
 
 PACKAGE_SITE_UPDATE = "simiki3.data.site_update"
 
@@ -52,7 +50,7 @@ class SiteUpdater:
 
     def _copy_examples(self, *, overwrite: bool, result: UpdateResult) -> None:
         examples_dir = self.resources / "examples"
-        if not resources.is_resource(examples_dir, "__init__") and not examples_dir.exists():
+        if not examples_dir.exists():
             return
         with resources.as_file(examples_dir) as extracted:
             src_path = Path(extracted)
@@ -60,7 +58,7 @@ class SiteUpdater:
                 if item.is_dir():
                     continue
                 rel = item.relative_to(src_path)
-                destination = self.root / rel
+                destination = self.root / self.config.source / rel
                 self._copy_file(item, destination, overwrite, result)
 
     def _sync_theme(self, *, result: UpdateResult, overwrite: bool) -> None:
@@ -99,4 +97,3 @@ def update_site(
         config = load_config(ConfigFiles().resolve(root))
     updater = SiteUpdater(root, config)
     return updater.update(overwrite=overwrite, include_examples=include_examples, sync_theme=sync_theme)
-
