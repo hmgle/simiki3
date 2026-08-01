@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from simiki3.validate import compare_directories
+import pytest
 
 
 def test_compare_directories_detects_changes(tmp_path):
@@ -23,3 +24,8 @@ def test_compare_directories_detects_changes(tmp_path):
     assert Path('only-new.html') in result.missing_in_legacy
     assert Path('sub/page.html') in result.changed_files
     assert not result.is_clean
+
+
+def test_compare_directories_rejects_missing_roots(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        compare_directories(tmp_path / "legacy", tmp_path / "new")

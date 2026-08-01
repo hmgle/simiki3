@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pytest
+import yaml
 
 from simiki3.config import default_config
 from simiki3.page_scaffold import NewPageResult, PageExistsError, create_page
@@ -21,8 +22,14 @@ def test_create_page_writes_front_matter(tmp_path):
     assert page_path.exists()
     text = page_path.read_text(encoding="utf-8")
     assert text.startswith("---")
-    assert "title: \"Demo Page\"" in text
-    assert "draft: true" not in text
+    assert yaml.safe_load(text.split("---", 2)[1])["title"] == "Demo Page"
+
+
+def test_create_page_rejects_path_traversal(tmp_path):
+    config = default_config()
+
+    with pytest.raises(ValueError):
+        create_page(tmp_path, config, title="Unsafe", category="../outside")
 
 
 def test_create_page_respects_draft_and_force(tmp_path):

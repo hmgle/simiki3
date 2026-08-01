@@ -15,7 +15,7 @@ def test_initialise_site_creates_expected_structure(tmp_path):
 
     assert (target / "_config.yml").exists()
     assert (target / "content" / "intro" / "welcome.md").exists()
-    assert (target / "themes" / "default" / "templates" / "page.html").exists()
+    assert (target / config.themes_dir / config.theme / "templates" / "page.html").exists()
     assert (target / "attach" / ".gitkeep").exists()
     assert (target / "output").is_dir()
 
@@ -25,7 +25,7 @@ def test_initialise_site_creates_expected_structure(tmp_path):
     assert loaded["root"] == "/docs"
 
     assert "content/intro" in result.created_dirs
-    assert "themes/default/templates/page.html" in result.created_files
+    assert f"{config.themes_dir}/{config.theme}/templates/page.html" in result.created_files
     assert not result.skipped
 
 

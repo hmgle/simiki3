@@ -4,6 +4,7 @@ import pytest
 import yaml
 
 from simiki3.build import BuildResult, build_site
+from simiki3.config import default_config
 from simiki3.scaffold import initialise_site
 
 
@@ -23,6 +24,7 @@ def test_build_site_renders_markdown(tmp_path):
     assert catalog.exists()
     catalog_html = catalog.read_text(encoding="utf-8")
     assert "Pages" in catalog_html
+    assert "Welcome to Simiki Wiki" in catalog_html
 
 
 def test_build_site_skips_draft(tmp_path):
@@ -78,3 +80,21 @@ def test_build_site_generates_feed(tmp_path):
     feed_xml = feed_file.read_text(encoding="utf-8")
     assert "<feed" in feed_xml
     assert "https://example.com" in feed_xml
+
+
+def test_build_site_supports_configured_legacy_theme_and_root(tmp_path):
+    site_root = tmp_path / "site"
+    config = default_config().with_overrides(
+        theme="simple", root="/docs", url="https://example.com/wiki"
+    )
+    initialise_site(site_root, config=config)
+
+    build_site(site_root, config=config)
+
+    page_html = (site_root / "output" / "intro" / "welcome.html").read_text(encoding="utf-8")
+    index_html = (site_root / "output" / "index.html").read_text(encoding="utf-8")
+    feed_xml = (site_root / "output" / "atom.xml").read_text(encoding="utf-8")
+    assert "/docs/static/css/style.css" in page_html
+    assert "Pages" in index_html
+    assert "https://example.com/wiki/docs/atom.xml" in feed_xml
+    assert "https:/example.com" not in feed_xml
