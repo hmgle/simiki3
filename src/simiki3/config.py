@@ -20,6 +20,14 @@ class ConfigError(ValueError):
         self.validation_error = validation_error
 
 
+_EMPTY_TEXT_DEFAULTS = {
+    "url": "",
+    "keywords": "",
+    "description": "",
+    "author": "",
+}
+
+
 class SiteConfig(BaseModel):
     """Validated configuration for a wiki site."""
 
@@ -147,6 +155,9 @@ def load_config(config_path: Path, *, overrides: Mapping[str, Any] | None = None
         raise ConfigError("Configuration root must be a mapping of keys to values")
 
     merged: dict[str, Any] = {**default_config().as_dict(), **dict(data)}
+    for field_name, default in _EMPTY_TEXT_DEFAULTS.items():
+        if merged.get(field_name) is None:
+            merged[field_name] = default
     if overrides:
         merged.update(dict(overrides))
 
@@ -184,6 +195,8 @@ def load_legacy_config(config_path: Path) -> SiteConfig:
         if field_name not in data:
             continue
         value = data[field_name]
+        if value is None and field_name in _EMPTY_TEXT_DEFAULTS:
+            value = _EMPTY_TEXT_DEFAULTS[field_name]
         if field_name == "root" and isinstance(value, str):
             value = value.strip() or "/"
             if not value.startswith("/"):

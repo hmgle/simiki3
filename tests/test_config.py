@@ -39,6 +39,26 @@ pygments: false
     assert config.source == "content"
 
 
+def test_load_config_accepts_empty_legacy_text_fields(tmp_path):
+    cfg = tmp_path / "_config.yml"
+    cfg.write_text(
+        "url:\n"
+        "keywords:\n"
+        "description:\n"
+        "author:\n"
+        "root: /wiki/\n",
+        encoding="utf-8",
+    )
+
+    config = load_config(cfg)
+
+    assert config.url == ""
+    assert config.keywords == ""
+    assert config.description == ""
+    assert config.author == ""
+    assert config.root == "/wiki"
+
+
 def test_load_config_accepts_overrides(tmp_path):
     cfg = tmp_path / "_config.yml"
     cfg.write_text("title: Legacy\n")
