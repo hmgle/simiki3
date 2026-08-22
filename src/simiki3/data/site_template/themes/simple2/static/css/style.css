@@ -189,6 +189,23 @@ li.pagelist {
 
 .index ul { margin: 0; }
 
+.catalog-page {
+    margin-bottom: 0.75em;
+}
+
+.catalog-title {
+    display: inline-block;
+}
+
+.catalog-summary {
+    display: block;
+    margin-top: 0.2em;
+    color: #666;
+    font-size: 90%;
+    line-height: 1.4em;
+    white-space: normal;
+}
+
 /* Table of Contents */
 .toc {
     margin: 0 0.5em;

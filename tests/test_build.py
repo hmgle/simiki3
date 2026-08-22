@@ -52,6 +52,65 @@ Draft content
     assert (site_root / "output" / "intro" / "draft.html").exists()
 
 
+def test_catalog_uses_explicit_summaries_and_separates_them_from_titles(tmp_path):
+    site_root = tmp_path / "site"
+    initialise_site(site_root)
+
+    page_path = site_root / "content" / "intro" / "catalog-page.md"
+    page_path.write_text(
+        """
+---
+title: Catalog Page
+summary: A concise catalog summary.
+---
+
+# Body heading
+
+This body text must stay out of the catalog.
+        """.strip(),
+        encoding="utf-8",
+    )
+
+    build_site(site_root)
+
+    catalog_html = (site_root / "output" / "index.html").read_text(encoding="utf-8")
+    assert (
+        '<li class="catalog-page">\n'
+        '  <a class="catalog-title" href="/intro/catalog-page.html">Catalog Page</a>\n'
+        '  <div class="catalog-summary">A concise catalog summary.</div>\n'
+        "</li>"
+    ) in catalog_html
+    assert "Body heading" not in catalog_html
+    assert "This body text must stay out of the catalog." not in catalog_html
+
+
+def test_catalog_omits_summary_when_page_has_no_summary_metadata(tmp_path):
+    site_root = tmp_path / "site"
+    initialise_site(site_root)
+
+    page_path = site_root / "content" / "intro" / "title-only.md"
+    page_path.write_text(
+        """
+---
+title: Title Only
+---
+
+The page body is not a catalog summary.
+        """.strip(),
+        encoding="utf-8",
+    )
+
+    build_site(site_root)
+
+    catalog_html = (site_root / "output" / "index.html").read_text(encoding="utf-8")
+    assert (
+        '<li class="catalog-page">\n'
+        '  <a class="catalog-title" href="/intro/title-only.html">Title Only</a>\n'
+        "</li>"
+    ) in catalog_html
+    assert "The page body is not a catalog summary." not in catalog_html
+
+
 def test_build_site_copies_attachments(tmp_path):
     site_root = tmp_path / "site"
     initialise_site(site_root)

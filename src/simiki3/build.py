@@ -180,11 +180,11 @@ class SiteBuilder:
                     title = html.escape(str(page.meta.get("title", page.output_relative.stem)))
                     summary_text = _page_summary(page, length=140)
                     summary = html.escape(summary_text) if summary_text else ""
-                    lines.append(
-                        f"<li><a href=\"{permalink}\">{title}</a>"
-                        + (f"<span class=\"catalog-summary\"> — {summary}</span>" if summary else "")
-                        + "</li>"
-                    )
+                    lines.append('<li class="catalog-page">')
+                    lines.append(f'  <a class="catalog-title" href="{permalink}">{title}</a>')
+                    if summary:
+                        lines.append(f'  <div class="catalog-summary">{summary}</div>')
+                    lines.append("</li>")
                 lines.append("</ul>")
                 lines.append("</section>")
 
@@ -225,7 +225,7 @@ class SiteBuilder:
             ET.SubElement(entry, "id").text = url
             ET.SubElement(entry, "link", href=url)
             ET.SubElement(entry, "updated").text = _page_updated(page).isoformat()
-            summary_text = page.meta.get("description") or _page_summary(page)
+            summary_text = page.meta.get("description") or _page_summary(page) or _page_excerpt(page)
             summary_el = ET.SubElement(entry, "summary", type="html")
             summary_el.text = str(summary_text)
 
@@ -310,11 +310,20 @@ def _coerce_datetime(value) -> datetime:
 def _page_summary(page: Page, *, length: int = 200) -> str:
     summary = page.meta.get("summary") or page.meta.get("description")
     if not summary:
-        summary = strip_html(page.html) or page.markdown
-    summary = str(summary).strip()
-    if len(summary) > length:
-        summary = summary[:length].rstrip() + "…"
-    return summary
+        return ""
+    return _truncate_text(str(summary), length=length)
+
+
+def _page_excerpt(page: Page, *, length: int = 200) -> str:
+    excerpt = strip_html(page.html) or page.markdown
+    return _truncate_text(excerpt, length=length)
+
+
+def _truncate_text(value: str, *, length: int) -> str:
+    value = value.strip()
+    if len(value) > length:
+        value = value[:length].rstrip() + "…"
+    return value
 
 
 def _indent_xml(elem: ET.Element, level: int = 0) -> None:
