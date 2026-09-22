@@ -39,11 +39,15 @@ def _theme_css(theme: str) -> str:
         return css_path.read_text(encoding="utf-8")
 
 
-def test_simple2_theme_toc_uses_sidebar_layout():
-    """A floated TOC squeezes body text; long TOCs must become a sidebar."""
-    css = _theme_css("simple2")
+@pytest.mark.parametrize("theme", ["simple", "simple2"])
+def test_theme_toc_uses_scroll_aligned_sidebar_layout(theme):
+    """Long TOCs use the page gutter and scroll with the article."""
+    css = _theme_css(theme)
     toc_rules = re.findall(r"\.toc\s*\{[^}]*\}", css)
     assert toc_rules
     assert all("float" not in rule for rule in toc_rules)
-    assert any("position: fixed" in rule for rule in toc_rules)
+    assert all("position: fixed" not in rule for rule in toc_rules)
+    assert any("position: absolute" in rule for rule in toc_rules)
+    container_rules = re.findall(r"#container\s*\{[^}]*\}", css)
+    assert any("position: relative" in rule for rule in container_rules)
     assert "max-height" in css
