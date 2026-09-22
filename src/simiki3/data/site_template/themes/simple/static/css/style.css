@@ -214,6 +214,8 @@ li.pagelist:before {
     margin: 0;
 }
 
+/* Wide screens: pin the TOC to a sidebar beside the article so long
+   tables of contents never squeeze the body text into a narrow column. */
 @media (min-width: 82em) {
     .toc {
         position: fixed;
